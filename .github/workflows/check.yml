@@ -1,0 +1,24 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate skills
+        run: python3 tools/check_skills.py
+      - name: Install into a scratch project
+        run: |
+          mkdir -p /tmp/scratch && cd /tmp/scratch
+          "$GITHUB_WORKSPACE/install.sh" --project
+          test -f .claude/commands/memory-episodic.md
+          test -f .opencode/skills/memory-episodic/SKILL.md
+          test -f .opencode/skills/memory-episodic/references/evaluation.md
