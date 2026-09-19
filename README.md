@@ -248,6 +248,13 @@ New memory types, better code, tighter verifications — all welcome. Open a PR
 against `main`; keep the conventions above and make sure `tools/check_skills.py`
 passes before submitting.
 
+## Related
+
+Three repositories, one scaffold: same skill format, same `install.sh`, same `tools/check_skills.py`.
+
+- [**agent-harness-skills**](https://github.com/ArttuAn/agent-harness-skills) — Skills for scaffolding the agent loop itself — ReAct, plan-and-execute, reflexion, multi-agent, code agent.
+- [**eu-compliance-skills**](https://github.com/ArttuAn/eu-compliance-skills) — Skills that interrogate you before the code exists — GDPR, AI Act, CRA, NIS2, DSA, EAA, ePrivacy, with a gate that refuses on a blocker.
+
 ## License
 
 [MIT](LICENSE) — do anything you like, attribute politely.
