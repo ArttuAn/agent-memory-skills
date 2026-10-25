@@ -258,3 +258,11 @@ Three repositories, one scaffold: same skill format, same `install.sh`, same `to
 ## License
 
 [MIT](LICENSE) — do anything you like, attribute politely.
+
+## Installer safety
+
+The installer validates the source before copying, refuses symlinks or junctions
+in source and destination paths, and refuses destinations that overlap source
+directories. Each file is replaced atomically; unrelated destination files are
+preserved. Removed upstream files are not automatically deleted: review obsolete
+files when upgrading. Install only into directories controlled by your user.

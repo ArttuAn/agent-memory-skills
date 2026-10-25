@@ -18,6 +18,8 @@ jobs:
           python-version: "3.12"
       - name: Validate skills
         run: python3 tools/check_skills.py
+      - name: Installer and memory isolation regressions
+        run: python3 -m unittest discover -s tests -v
       - name: Install into a scratch project
         run: |
           mkdir -p /tmp/scratch && cd /tmp/scratch

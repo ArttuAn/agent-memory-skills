@@ -20,8 +20,8 @@ MODE="global"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project) MODE="project"; shift ;;
-    --opencode-dir) OPENCODE_DEST="$2"; shift 2 ;;
-    --claude-dir) CLAUDE_DEST="$2"; shift 2 ;;
+    --opencode-dir) [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || { echo "--opencode-dir requires a directory" >&2; exit 2; }; OPENCODE_DEST="$2"; shift 2 ;;
+    --claude-dir) [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || { echo "--claude-dir requires a directory" >&2; exit 2; }; CLAUDE_DEST="$2"; shift 2 ;;
     --help|-h)
       sed -n '2,9p' "${BASH_SOURCE[0]}"
       exit 0
@@ -38,28 +38,9 @@ else
   CLAUDE_DEST="${CLAUDE_DEST:-$HOME/.claude/commands}"
 fi
 
-install_skills() {
-  echo "opencode skills -> $OPENCODE_DEST"
-  mkdir -p "$OPENCODE_DEST"
-  for skill_dir in "$SKILLS_SRC"/*; do
-    name="memory-$(basename "$skill_dir")"
-    rm -rf "${OPENCODE_DEST:?}/$name"
-    cp -R "$skill_dir" "$OPENCODE_DEST/$name"
-    # The skills cite references/ by relative path; ship them alongside.
-    cp -R "$REFERENCES_SRC" "$OPENCODE_DEST/$name/references"
-    echo "  installed skill: $name"
-  done
-}
+python3 "$ROOT/tools/check_skills.py" --quiet
 
-install_commands() {
-  echo "claude commands  -> $CLAUDE_DEST"
-  mkdir -p "$CLAUDE_DEST"
-  for command in "$COMMANDS_SRC"/*.md; do
-    cp "$command" "$CLAUDE_DEST/$(basename "$command")"
-    echo "  installed command: /$(basename "$command" .md)"
-  done
-}
-
-install_skills
-install_commands
-echo "done. Skills are now available to your agentic IDEs."
+exec python3 "$ROOT/tools/install_safe.py" \
+  --root "$ROOT" \
+  --opencode-dir "$OPENCODE_DEST" \
+  --claude-dir "$CLAUDE_DEST"

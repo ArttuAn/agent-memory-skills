@@ -14,27 +14,56 @@ was implemented as an optional argument to `search`, and one call site omitted i
 Make it structurally impossible instead:
 
 ```python
+from copy import deepcopy
+
+
 class ScopedStore:
     """A store handle that cannot be used without a scope."""
 
     def __init__(self, backend, scope: str):
-        if not scope:
+        if not isinstance(scope, str) or not scope.strip():
             raise ValueError("scope is required")
         self._backend, self._scope = backend, scope
 
     def put(self, record):
+        record = deepcopy(record)
         record.metadata["scope"] = self._scope
         record.id = record_id(record.kind, record.text, scope=self._scope)
         return self._backend.put(record)
 
+    def get(self, record_id):
+        record = self._backend.get(record_id)
+        if record is None or record.metadata.get("scope") != self._scope:
+            return None
+        return deepcopy(record)
+
+    def delete(self, record_id):
+        if self.get(record_id) is None:
+            return False
+        return self._backend.delete(record_id)
+
+    def all(self, *, kind=None):
+        return (deepcopy(r) for r in self._backend.all(kind=kind)
+                if r.metadata.get("scope") == self._scope)
+
     def search(self, query, **kwargs):
         where = {**(kwargs.pop("where", None) or {}), "scope": self._scope}
-        return self._backend.search(query, where=where, **kwargs)
+        hits = self._backend.search(query, where=where, **kwargs)
+        if any(hit.record.metadata.get("scope") != self._scope for hit in hits):
+            raise ValueError("backend violated scope isolation")
+        return deepcopy(hits)
 ```
 
 The agent never touches the backend. It receives a `ScopedStore` already bound
 to the right scope, and there is no code path that forgets. This is worth more
 than any amount of care at the call sites.
+
+Bind this scope from the authenticated principal on the server, never from a
+model argument or an arbitrary request field. The backend must apply `where`
+before ranking and limiting; use the filtering `FakeStore` in `store-seam.md`
+for offline tests. A guessed record ID must not grant read or delete access.
+For concurrent or hosted stores, enforce scope on every backend operation in
+the same transaction; this Python handle is not a database authorization layer.
 
 Note `record_id` includes the scope — otherwise two users who state the same
 fact produce the same content hash and collide into one row.

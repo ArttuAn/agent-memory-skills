@@ -178,25 +178,28 @@ halfway does not leave half a merge behind.
 For testing anything that *consumes* memory rather than implements it:
 
 ```python
+from copy import deepcopy
+
+
 class FakeStore:
     """In-memory MemoryStore. Substring search, insertion order, no embeddings."""
 
     def __init__(self, records=()):
-        self.records = {r.id: r for r in records}
+        self.records = {r.id: deepcopy(r) for r in records}
         self.searches: list[tuple[str, int]] = []
 
     def put(self, record):
-        self.records[record.id] = record
+        self.records[record.id] = deepcopy(record)
         return record.id
 
     def get(self, record_id):
-        return self.records.get(record_id)
+        return deepcopy(self.records.get(record_id))
 
     def delete(self, record_id):
         return self.records.pop(record_id, None) is not None
 
     def all(self, *, kind=None):
-        return (r for r in self.records.values() if kind is None or r.kind == kind)
+        return (deepcopy(r) for r in self.records.values() if kind is None or r.kind == kind)
 
     def search(self, query, *, k=5, kind=None, where=None):
         self.searches.append((query, k))
@@ -204,6 +207,7 @@ class FakeStore:
             Hit(record=r, score=1.0, why="fake substring")
             for r in self.all(kind=kind)
             if query.lower() in r.text.lower()
+            and all(r.metadata.get(key) == value for key, value in (where or {}).items())
         ]
         return hits[:k]
 ```
@@ -212,6 +216,12 @@ class FakeStore:
 "retrieval returned the wrong thing" — they are "retrieval was never called",
 or "retrieval was called with the raw user turn instead of the rewritten
 query". Recording the calls lets a test assert on that directly.
+
+The fake applies metadata filters **before** the result limit, including the
+scope filter. Ignoring `where` makes a scoped handle leak another tenant's
+records and lets isolation tests pass against behavior the real store cannot
+safely implement. Copies on writes and reads prevent a caller from changing a
+stored scope through a retained Python object reference.
 
 ## Identity: content hashing, not autoincrement
 
