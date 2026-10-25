@@ -69,7 +69,6 @@ def install(root, opencode, commands, claude_skills=None):
         try:
             with os.fdopen(fd, "wb") as output:
                 output.write(source.read_bytes())
-            os.chmod(temporary, 0o644)
             os.replace(temporary, destination)
         finally:
             Path(temporary).unlink(missing_ok=True)
